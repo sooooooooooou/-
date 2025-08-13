@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photos</title>
+  <!-- Firebase SDK CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8f9fa;
+      color: #202124;
+    }
+    
+    .header {
+      background: white;
+      border-bottom: 1px solid #e8eaed;
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    
+    .logo {
+      font-size: 22px;
+      font-weight: 400;
+      color: #5f6368;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .search-box {
+      background: #f1f3f4;
+      border: none;
+      border-radius: 24px;
+      padding: 12px 48px 12px 48px;
+      font-size: 16px;
+      width: 420px;
+      position: relative;
+    }
+    
+    .search-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      color: #9aa0a6;
+      z-index: 1;
+    }
+    
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #5f6368;
+      transition: background-color 0.15s ease;
+    }
+    
+    .icon-btn:hover {
+      background-color: #f1f3f4;
+    }
+    
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(45deg, #4285f4, #34a853);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    
+    .main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    
+    .upload-section {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #e8eaed;
+    }
+    
+    .upload-area {
+      border: 2px dashed #dadce0;
+      border-radius: 8px;
+      padding: 48px 24px;
+      text-align: center;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    
+    .upload-area:hover,
+    .upload-area.dragover {
+      border-color: #4285f4;
+      background-color: #f8f9ff;
+    }
+    
+    .upload-icon {
+      font-size: 48px;
+      color: #dadce0;
+      margin-bottom: 16px;
+    }
+    
+    .upload-area.dragover .upload-icon {
+      color: #4285f4;
+    }
+    
+    .upload-text {
+      font-size: 18px;
+      color: #5f6368;
+      margin-bottom: 8px;
+    }
+    
+    .upload-subtext {
+      font-size: 14px;
+      color: #9aa0a6;
+    }
+    
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    
+    .filter-chip {
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 16px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #5f6368;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    
+    .filter-chip.active {
+      background: #e8f0fe;
+      border-color: #4285f4;
+      color: #1967d2;
+    }
+    
+    .filter-chip:hover {
+      background: #f1f3f4;
+    }
+    
+    .view-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .view-toggle {
+      display: flex;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .view-btn {
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #5f6368;
+      transition: all 0.15s ease;
+    }
+    
+    .view-btn.active {
+      background: #4285f4;
+      color: white;
+    }
+    
+    .sort-select {
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      background: white;
+      font-size: 14px;
+      color: #5f6368;
+      cursor: pointer;
+    }
+    
+    .photos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 4px;
+      margin-bottom: 48px;
+    }
+    
+    .photo-item {
+      aspect-ratio: 1;
+      background: #f1f3f4;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s ease;
+    }
+    
+    .photo-item:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    }
+    
+    .photo-item img,
+    .photo-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .photo-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(transparent 70%, rgba(0,0,0,0.4));
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      display: flex;
+      align-items: flex-end;
+      padding: 8px;
+    }
+    
+    .photo-item:hover .photo-overlay {
+      opacity: 1;
+    }
+    
+    .photo-info {
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .photo-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    
+    .photo-item:hover .photo-actions {
+      opacity: 1;
+    }
+    
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      background: rgba(0,0,0,0.6);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: background-color 0.15s ease;
+    }
+    
+    .action-btn:hover {
+      background: rgba(0,0,0,0.8);
+    }
+    
+    .list-view .photos-grid {
+      display: block;
+    }
+    
+    .list-view .photo-item {
+      aspect-ratio: unset;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      margin-bottom: 4px;
+      background: white;
+      border: 1px solid #e8eaed;
+    }
+    
+    .list-view .photo-item img,
+    .list-view .photo-item video {
+      width: 60px;
+      height: 44px;
+      border-radius: 4px;
+      margin-right: 16px;
+    }
+    
+    .list-view .photo-overlay {
+      position: static;
+      background: none;
+      opacity: 1;
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0;
+    }
+    
+    .list-view .photo-info {
+      color: #202124;
+      font-size: 14px;
+    }
+    
+    .list-view .photo-actions {
+      position: static;
+      opacity: 1;
+    }
+    
+    .list-view .action-btn {
+      background: transparent;
+      color: #5f6368;
+    }
+    
+    .list-view .action-btn:hover {
+      background: #f1f3f4;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.9);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-content {
+      max-width: 95vw;
+      max-height: 95vh;
+      position: relative;
+    }
+    
+    .modal-content img,
+    .modal-content video {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 8px;
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: -50px;
+      right: 0;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.15s ease;
+    }
+    
+    .modal-close:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+    
+    .auth-modal {
+      display: none;
+      position: fixed;
+      z-index: 1001;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .auth-content {
+      background: white;
+      border-radius: 8px;
+      padding: 48px;
+      width: 400px;
+      max-width: 90vw;
+    }
+    
+    .auth-title {
+      font-size: 24px;
+      font-weight: 400;
+      color: #202124;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 14px;
+      color: #5f6368;
+      margin-bottom: 8px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 16px;
+      transition: border-color 0.15s ease;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #4285f4;
+    }
+    
+    .btn-primary {
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 16px;
+      transition: background-color 0.15s ease;
+    }
+    
+    .btn-primary:hover {
+      background: #1967d2;
+    }
+    
+    .btn-secondary {
+      background: none;
+      color: #4285f4;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.15s ease;
+    }
+    
+    .btn-secondary:hover {
+      background: #f8f9fa;
+    }
+    
+    .message {
+      padding: 16px;
+      border-radius: 4px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    
+    .message.error {
+      background: #fce8e6;
+      color: #d93025;
+      border: 1px solid #fad2cf;
+    }
+    
+    .message.success {
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #ceead6;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .guest-notice {
+      background: #e8f0fe;
+      border: 1px solid #4285f4;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      color: #1967d2;
+    }
+
+    /* ダークモード */
+    body.dark {
+      background-color: #121212;
+      color: #e8eaed;
+    }
+    
+    body.dark .header {
+      background: #1f1f1f;
+      border-bottom-color: #3c4043;
+    }
+    
+    body.dark .logo {
+      color: #e8eaed;
+    }
+    
+    body.dark .search-box {
+      background: #303134;
+      color: #e8eaed;
+    }
+    
+    body.dark .icon-btn:hover {
+      background-color: #3c4043;
+    }
+    
+    body.dark .upload-section,
+    body.dark .filter-chip,
+    body.dark .view-toggle,
+    body.dark .sort-select {
+      background: #1f1f1f;
+      border-color: #3c4043;
+      color: #e8eaed;
+    }
+    
+    body.dark .upload-area {
+      border-color: #3c4043;
+      background: #121212;
+    }
+    
+    body.dark .upload-area:hover,
+    body.dark .upload-area.dragover {
+      border-color: #4285f4;
+      background: #1a1a2e;
+    }
+    
+    body.dark .filter-chip.active {
+      background: #1967d2;
+    }
+    
+    body.dark .photo-item {
+      background: #1f1f1f;
+    }
+    
+    body.dark .list-view .photo-item {
+      background: #1f1f1f;
+      border-color: #3c4043;
+    }
+    
+    body.dark .list-view .photo-info {
+      color: #e8eaed;
+    }
+    
+    body.dark .list-view .action-btn {
+      color: #9aa0a6;
+    }
+    
+    body.dark .list-view .action-btn:hover {
+      background: #3c4043;
+    }
+    
+    body.dark .auth-content {
+      background: #1f1f1f;
+      color: #e8eaed;
+    }
+    
+    body.dark .form-input {
+      background: #303134;
+      border-color: #3c4043;
+      color: #e8eaed;
+    }
+    
+    body.dark .btn-secondary {
+      background: #1f1f1f;
+      border-color: #3c4043;
+      color: #4285f4;
+    }
+    
+    body.dark .btn-secondary:hover {
+      background: #303134;
+    }
+
+    /* 設定パネル */
+    .settings-panel {
+      display: none;
+      position: absolute;
+      top: 50px;
+      right: 0;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      padding: 16px;
+      width: 250px;
+      z-index: 200;
+    }
+    
+    body.dark .settings-panel {
+      background: #1f1f1f;
+      border-color: #3c4043;
+    }
+    
+    .settings-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #e8eaed;
+    }
+    
+    body.dark .settings-item {
+      border-bottom-color: #3c4043;
+    }
+    
+    .settings-item:last-child {
+      border-bottom: none;
+    }
+    
+    .settings-label {
+      font-size: 14px;
+      color: #5f6368;
+    }
+    
+    body.dark .settings-label {
+      color: #9aa0a6;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #dadce0;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .toggle-switch.active {
+      background: #4285f4;
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.15s ease;
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(20px);
+    }
+
+    /* アルバムモーダル */
+    .album-modal {
+      display: none;
+      position: fixed;
+      z-index: 1001;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .album-modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 32px;
+      width: 400px;
+      max-width: 90vw;
+    }
+    
+    body.dark .album-modal-content {
+      background: #1f1f1f;
+      color: #e8eaed;
+    }
+    
+    .album-title {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 24px;
+      color: #202124;
+    }
+    
+    body.dark .album-title {
+      color: #e8eaed;
+    }
+    
+    .album-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+    
+    .album-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    
+    .album-item:hover {
+      background: #f8f9fa;
+    }
+    
+    body.dark .album-item:hover {
+      background: #303134;
+    }
+    
+    .album-checkbox {
+      margin-right: 12px;
+    }
+    
+    .new-album-section {
+      border-top: 1px solid #e8eaed;
+      padding-top: 16px;
+    }
+    
+    body.dark .new-album-section {
+      border-top-color: #3c4043;
+    }
+    
+    .new-album-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    
+    body.dark .new-album-input {
+      background: #303134;
+      border-color: #3c4043;
+      color: #e8eaed;
+    }
+    
+    .album-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .btn-small.primary {
+      background: #4285f4;
+      color: white;
+    }
+    
+    .btn-small.primary:hover {
+      background: #1967d2;
+    }
+    
+    .btn-small.secondary {
+      background: none;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+    
+    body.dark .btn-small.secondary {
+      color: #9aa0a6;
+      border-color: #3c4043;
+    }
+    
+    .btn-small.secondary:hover {
+      background: #f8f9fa;
+    }
+    
+    body.dark .btn-small.secondary:hover {
+      background: #303134;
+    }
+    
+    @media (max-width: 768px) {
+      .header {
+        padding: 8px 16px;
+      }
+      
+      .search-box {
+        width: 200px;
+      }
+      
+      .main-container {
+        padding: 16px;
+      }
+      
+      .photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 2px;
+      }
+      
+      .upload-area {
+        padding: 32px 16px;
+      }
+    }
+  </style>
+  <!-- Firebase SDK CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">
+        📸 フォト
+      </div>
+      <div class="search-container">
+        <div class="search-icon">🔍</div>
+        <input type="text" class="search-box" placeholder="写真を検索" id="searchInput">
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <button class="icon-btn" id="uploadBtn" title="アップロード">➕</button>
+      <div style="position: relative;">
+        <button class="icon-btn" id="settingsBtn" title="設定">⚙️</button>
+        <div class="settings-panel" id="settingsPanel">
+          <div class="settings-item">
+            <span class="settings-label">ダークモード</span>
+            <div class="toggle-switch" id="darkModeToggle"></div>
+          </div>
+          <div class="settings-item">
+            <span class="settings-label">エクスポート</span>
+            <button class="btn-small secondary" id="exportBtn">実行</button>
+          </div>
+          <div class="settings-item">
+            <span class="settings-label">インポート</span>
+            <button class="btn-small secondary" id="importBtn">実行</button>
+          </div>
+        </div>
+      </div>
+      <div class="user-avatar" id="userBtn">👤</div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="guest-notice" id="guestNotice">
+      ゲストモードで使用中です。データを永続化するにはアカウントを作成してください。
+    </div>
+
+    <div class="upload-section" id="uploadSection">
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">写真や動画をドラッグしてアップロード</div>
+        <div class="upload-subtext">または選択してアップロード</div>
+        <input type="file" id="fileInput" multiple accept="image/*,video/*" style="display: none;">
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <div class="filter-chip active" data-filter="all">すべて</div>
+      <div class="filter-chip" data-filter="recent">最近</div>
+      <div class="filter-chip" data-filter="favorites">お気に入り</div>
+      <div class="filter-chip" data-filter="trash">ゴミ箱</div>
+      <!-- アルバムが動的に追加される -->
+    </div>
+
+    <div class="view-controls">
+      <div class="view-toggle">
+        <button class="view-btn active" id="gridViewBtn">⊞</button>
+        <button class="view-btn" id="listViewBtn">☰</button>
+      </div>
+      <select class="sort-select" id="sortSelect">
+        <option value="newest">最新順</option>
+        <option value="oldest">古い順</option>
+        <option value="name">名前順</option>
+      </select>
+    </div>
+
+    <div class="photos-container">
+      <div class="photos-grid" id="photosGrid">
+        <!-- 写真がここに動的に追加されます -->
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル -->
+  <div class="modal" id="modal">
+    <div class="modal-content" id="modalContent">
+      <div class="modal-close" id="modalClose">✕</div>
+    </div>
+  </div>
+
+  <!-- 認証モーダル -->
+  <div class="auth-modal" id="authModal">
+    <div class="auth-content">
+      <h2 class="auth-title" id="authTitle">ログイン</h2>
+      <form id="authForm">
+        <div class="form-group">
+          <label class="form-label">メールアドレス</label>
+          <input type="email" class="form-input" id="email" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">パスワード</label>
+          <input type="password" class="form-input" id="password" required>
+        </div>
+        <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+          <label class="form-label">パスワード確認</label>
+          <input type="password" class="form-input" id="confirmPassword">
+        </div>
+        <button type="submit" class="btn-primary" id="authSubmit">ログイン</button>
+        <button type="button" class="btn-secondary" id="authToggle">アカウント作成</button>
+        <button type="button" class="btn-secondary" id="authCancel">キャンセル</button>
+      </form>
+      <div id="authMessage"></div>
+    </div>
+  </div>
+
+<script>
+let db;
+let allImages = [];
+let filteredImages = [];
+let currentFilter = 'all';
+let currentView = 'grid';
+let currentUser = null;
+let isGuest = true;
+
+// ステップ1: Firebaseコンソールにアクセス (https://console.firebase.google.com)
+// ステップ2: プロジェクトを選択
+// ステップ3: プロジェクト設定(⚙アイコン) → 全般 → マイアプリ
+// ステップ4: ウェブアプリを選択 (</>アイコン) または作成
+// ステップ5: 表示される設定を以下のようにコピー
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBCkkQGoq6xm9gIi3SXD5ACWyF09_cXo4A",       // 実際のAPIキーに置き換え
+  authDomain: "phote-ec8f0.firebaseapp.com",  // 自動生成された値
+  projectId: "phote-ec8f0", // プロジェクトID
+  storageBucket: "phote-ec8f0.firebasestorage.app", // 自動生成
+  messagingSenderId: "325922770311", // 数値
+  appId: "1:325922770311:web:a39493565961d7ae861722"  // "1:数字:web:ランダム文字列"形式
+};
+
+// Firebase初期化
+try {
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const firestore = firebase.firestore();
+  console.log("Firebase initialized successfully");
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+}
+
+// ユーザー管理 (Firebase認証を使用)
+class UserManager {
+  constructor() {
+    // Firebaseはユーザーの状態を自動的に管理するため、ローカルストレージは不要
+  }
+
+  async register(email, password) {
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      return userCredential.user;
+    } catch (error) {
+      throw this.handleAuthError(error);
+    }
+  }
+
+  async login(email, password) {
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      return userCredential.user;
+    } catch (error) {
+      throw this.handleAuthError(error);
+    }
+  }
+
+  async logout() {
+    await auth.signOut();
+  }
+
+  getCurrentUser() {
+    return auth.currentUser;
+  }
+
+  isLoggedIn() {
+    return !!auth.currentUser;
+  }
+
+  handleAuthError(error) {
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        return new Error('このメールアドレスは既に使用されています。');
+      case 'auth/invalid-email':
+        return new Error('無効なメールアドレスです。');
+      case 'auth/operation-not-allowed':
+        return new Error('メール/パスワード認証が有効になっていません。Firebaseコンソールで有効にしてください。');
+      case 'auth/weak-password':
+        return new Error('パスワードは6文字以上である必要があります。');
+      case 'auth/user-disabled':
+        return new Error('このユーザーアカウントは無効になっています。');
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        return new Error('メールアドレスまたはパスワードが正しくありません。');
+      default:
+        return new Error(`認証エラー: ${error.message}`);
+    }
+  }
+  constructor() {
+    // Firebaseはユーザーの状態を自動的に管理するため、ローカルストレージは不要
+  }
+
+  async register(email, password) {
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      // ユーザー作成後、Firestoreにユーザーデータを保存することも可能
+      // await firestore.collection('users').doc(userCredential.user.uid).set({
+      //   email: userCredential.user.email,
+      //   createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      // });
+      return userCredential.user;
+    } catch (error) {
+      throw this.handleAuthError(error);
+    }
+  }
+
+  async login(email, password) {
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      return userCredential.user;
+    } catch (error) {
+      throw this.handleAuthError(error);
+    }
+  }
+
+  async logout() {
+    await auth.signOut();
+  }
+
+  getCurrentUser() {
+    return auth.currentUser;
+  }
+
+  isLoggedIn() {
+    return !!auth.currentUser;
+  }
+
+  handleAuthError(error) {
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        return new Error('このメールアドレスは既に使用されています。');
+      case 'auth/invalid-email':
+        return new Error('無効なメールアドレスです。');
+      case 'auth/operation-not-allowed':
+        return new Error('メール/パスワード認証が有効になっていません。Firebaseコンソールで有効にしてください。');
+      case 'auth/weak-password':
+        return new Error('パスワードは6文字以上である必要があります。');
+      case 'auth/user-disabled':
+        return new Error('このユーザーアカウントは無効になっています。');
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        return new Error('メールアドレスまたはパスワードが正しくありません。');
+      default:
+        return new Error(`認証エラー: ${error.message}`);
+    }
+  }
+}
+
+const userManager = new UserManager();
+
+// IndexedDB操作
+function openDB(username = 'guest') {
+  return new Promise((resolve, reject) => {
+    // FirebaseユーザーごとにIndexedDBを分ける
+    const dbName = `PhotosDB_${username.replace(/[^a-zA-Z0-9]/g, '_')}`; // 特殊文字を置き換え
+    const request = indexedDB.open(dbName, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = e => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains('photos')) {
+        const store = database.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('status', 'status', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
+        store.createIndex('favorite', 'favorite', { unique: false }); // お気に入りインデックスを追加
+      }
+    };
+  });
+}
+
+async function addPhoto(file) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const tx = db.transaction(['photos'], 'readwrite');
+      const store = tx.objectStore('photos');
+      
+      const data = {
+        name: file.name,
+        fileData: arrayBuffer,
+        fileType: file.type,
+        fileSize: file.size,
+        createdAt: Date.now(),
+        status: 'active',
+        favorite: false
+      };
+      
+      const request = store.add(data);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function getAllPhotos() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['photos'], 'readonly');
+    const store = tx.objectStore('photos');
+    const request = store.getAll();
+    
+    request.onsuccess = () => {
+      const results = request.result;
+      const processedResults = results.map(item => ({
+        ...item,
+        blob: new Blob([item.fileData], { type: item.fileType || 'application/octet-stream' }),
+        url: null
+      }));
+      resolve(processedResults);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function updatePhotoStatus(id, status) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['photos'], 'readwrite');
+    const store = tx.objectStore('photos');
+    const getRequest = store.get(id);
+    
+    getRequest.onsuccess = () => {
+      const data = getRequest.result;
+      if (data) {
+        data.status = status;
+        const updateRequest = store.put(data);
+        updateRequest.onsuccess = () => resolve();
+        updateRequest.onerror = () => reject(updateRequest.error);
+      } else {
+        reject(new Error('Photo not found'));
+      }
+    };
+    getRequest.onerror = () => reject(getRequest.error);
+  });
+}
+
+async function toggleFavorite(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['photos'], 'readwrite');
+    const store = tx.objectStore('photos');
+    const getRequest = store.get(id);
+    
+    getRequest.onsuccess = () => {
+      const data = getRequest.result;
+      if (data) {
+        data.favorite = !data.favorite;
+        const updateRequest = store.put(data);
+        updateRequest.onsuccess = () => resolve(data.favorite);
+        updateRequest.onerror = () => reject(updateRequest.error);
+      } else {
+        reject(new Error('Photo not found'));
+      }
+    };
+    getRequest.onerror = () => reject(getRequest.error);
+  });
+}
+
+async function deletePhoto(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['photos'], 'readwrite');
+    const store = tx.objectStore('photos');
+    const request = store.delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// UI更新関数
+function updateUI() {
+  const guestNotice = document.getElementById('guestNotice');
+  const userBtn = document.getElementById('userBtn');
+  
+  if (isGuest) {
+    guestNotice.style.display = 'block';
+    userBtn.textContent = '👤';
+    userBtn.title = 'ログイン';
+  } else {
+    guestNotice.style.display = 'none';
+    userBtn.textContent = currentUser.email.charAt(0).toUpperCase(); // Firebaseユーザーはemailを持つ
+    userBtn.title = currentUser.email;
+  }
+}
+
+function filterPhotos() {
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  
+  let filtered = allImages;
+  
+  // フィルター適用
+  switch (currentFilter) {
+    case 'recent':
+      const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(photo => photo.createdAt > weekAgo && photo.status === 'active');
+      break;
+    case 'favorites':
+      filtered = filtered.filter(photo => photo.favorite && photo.status === 'active');
+      break;
+    case 'trash':
+      filtered = filtered.filter(photo => photo.status === 'trash');
+      break;
+    default:
+      filtered = filtered.filter(photo => photo.status === 'active');
+  }
+  
+  // 検索適用
+  if (searchTerm) {
+    filtered = filtered.filter(photo => 
+      photo.name.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  // ソート適用
+  const sortType = document.getElementById('sortSelect').value;
+  switch (sortType) {
+    case 'oldest':
+      filtered.sort((a, b) => a.createdAt - b.createdAt);
+      break;
+    case 'name':
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    default: // newest
+      filtered.sort((a, b) => b.createdAt - a.createdAt);
+  }
+  
+  filteredImages = filtered;
+  renderPhotos();
+}
+
+function renderPhotos() {
+  const grid = document.getElementById('photosGrid');
+  grid.innerHTML = '';
+  
+  if (filteredImages.length === 0) {
+    grid.innerHTML = '<div style="text-align: center; color: #5f6368; padding: 48px;">写真がありません</div>';
+    return;
+  }
+  
+  filteredImages.forEach(photo => {
+    if (!photo.url) {
+      photo.url = URL.createObjectURL(photo.blob);
+    }
+    
+    const photoItem = document.createElement('div');
+    photoItem.className = 'photo-item';
+    
+    const isVideo = photo.fileType?.startsWith('video/');
+    const mediaElement = document.createElement(isVideo ? 'video' : 'img');
+    
+    if (isVideo) {
+      mediaElement.muted = true;
+      mediaElement.preload = 'metadata';
+    }
+    
+    mediaElement.src = photo.url;
+    mediaElement.alt = photo.name;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'photo-overlay';
+    
+    const info = document.createElement('div');
+    info.className = 'photo-info';
+    info.textContent = photo.name;
+    
+    const actions = document.createElement('div');
+    actions.className = 'photo-actions';
+    
+    // お気に入りボタン
+    if (currentFilter !== 'trash') {
+      const favoriteBtn = document.createElement('button');
+      favoriteBtn.className = 'action-btn';
+      favoriteBtn.innerHTML = photo.favorite ? '❤️' : '🤍';
+      favoriteBtn.title = photo.favorite ? 'お気に入りから削除' : 'お気に入りに追加';
+      favoriteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          const newFavoriteStatus = await toggleFavorite(photo.id);
+          favoriteBtn.innerHTML = newFavoriteStatus ? '❤️' : '🤍';
+          favoriteBtn.title = newFavoriteStatus ? 'お気に入りから削除' : 'お気に入りに追加';
+          await refreshPhotos();
+        } catch (error) {
+          console.error('お気に入り切り替えエラー:', error);
+        }
+      };
+      actions.appendChild(favoriteBtn);
+    }
+    
+    // 削除/復元ボタン
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'action-btn';
+    
+    if (currentFilter === 'trash') {
+      deleteBtn.innerHTML = '↺';
+      deleteBtn.title = '復元';
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          await updatePhotoStatus(photo.id, 'active');
+          await refreshPhotos();
+        } catch (error) {
+          console.error('復元エラー:', error);
+        }
+      };
+      
+      // 完全削除ボタン
+      const permanentDeleteBtn = document.createElement('button');
+      permanentDeleteBtn.className = 'action-btn';
+      permanentDeleteBtn.innerHTML = '🗑️';
+      permanentDeleteBtn.title = '完全削除';
+      permanentDeleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (confirm('この写真を完全に削除しますか？')) {
+          try {
+            await deletePhoto(photo.id);
+            await refreshPhotos();
+          } catch (error) {
+            console.error('削除エラー:', error);
+          }
+        }
+      };
+      actions.appendChild(permanentDeleteBtn);
+    } else {
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'ゴミ箱に移動';
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          await updatePhotoStatus(photo.id, 'trash');
+          await refreshPhotos();
+        } catch (error) {
+          console.error('削除エラー:', error);
+        }
+      };
+    }
+    actions.appendChild(deleteBtn);
+    
+    overlay.appendChild(info);
+    photoItem.appendChild(mediaElement);
+    photoItem.appendChild(overlay);
+    photoItem.appendChild(actions);
+    
+    // クリックでモーダル表示
+    photoItem.onclick = () => openModal(photo);
+    
+    grid.appendChild(photoItem);
+  });
+  
+  // ビュー切り替えのクラス適用
+  const container = document.querySelector('.photos-container');
+  if (currentView === 'list') {
+    container.classList.add('list-view');
+  } else {
+    container.classList.remove('list-view');
+  }
+}
+
+function openModal(photo) {
+  const modal = document.getElementById('modal');
+  const modalContent = document.getElementById('modalContent');
+  const modalClose = document.getElementById('modalClose');
+  
+  modalContent.innerHTML = '';
+  modalClose.style.display = 'block';
+  
+  const isVideo = photo.fileType?.startsWith('video/');
+  const mediaElement = document.createElement(isVideo ? 'video' : 'img');
+  
+  if (isVideo) {
+    mediaElement.controls = true;
+    mediaElement.autoplay = true;
+  }
+  
+  mediaElement.src = photo.url;
+  mediaElement.alt = photo.name;
+  
+  modalContent.appendChild(mediaElement);
+  modal.style.display = 'flex';
+  
+  // モーダルクローズ
+  const closeModal = () => {
+    modal.style.display = 'none';
+  };
+  
+  modalClose.onclick = closeModal;
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  };
+  
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', escHandler);
+    }
+  });
+}
+
+async function refreshPhotos() {
+  try {
+    allImages = await getAllPhotos();
+    updateFilterChips();
+    filterPhotos();
+  } catch (error) {
+    console.error('写真の読み込みエラー:', error);
+  }
+}
+
+function updateFilterChips() {
+  const chips = document.querySelectorAll('.filter-chip');
+  chips.forEach(chip => {
+    chip.classList.remove('active');
+    if (chip.dataset.filter === currentFilter) {
+      chip.classList.add('active');
+    }
+  });
+  
+  // 件数を更新
+  const counts = {
+    all: allImages.filter(p => p.status === 'active').length,
+    recent: allImages.filter(p => {
+      const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      return p.createdAt > weekAgo && p.status === 'active';
+    }).length,
+    favorites: allImages.filter(p => p.favorite && p.status === 'active').length,
+    trash: allImages.filter(p => p.status === 'trash').length
+  };
+  
+  chips.forEach(chip => {
+    const filter = chip.dataset.filter;
+    const originalText = chip.textContent.split(' (')[0];
+    chip.textContent = `${originalText} (${counts[filter] || 0})`;
+  });
+}
+
+// 認証モーダル
+function showAuthModal(isRegister = false) {
+  const modal = document.getElementById('authModal');
+  const title = document.getElementById('authTitle');
+  const submitBtn = document.getElementById('authSubmit');
+  const toggleBtn = document.getElementById('authToggle');
+  const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+  const emailInput = document.getElementById('email'); // ユーザー名をメールアドレスに変更
+  
+  if (isRegister) {
+    title.textContent = 'アカウント作成';
+    submitBtn.textContent = 'アカウント作成';
+    toggleBtn.textContent = 'ログイン';
+    confirmPasswordGroup.style.display = 'block';
+  } else {
+    title.textContent = 'ログイン';
+    submitBtn.textContent = 'ログイン';
+    toggleBtn.textContent = 'アカウント作成';
+    confirmPasswordGroup.style.display = 'none';
+  }
+  
+  // ユーザー名フィールドをメールアドレスに変更
+  document.querySelector('.form-group label[for="username"]').textContent = 'メールアドレス';
+  emailInput.type = 'email';
+  emailInput.id = 'email';
+  emailInput.name = 'email';
+
+  modal.style.display = 'flex';
+}
+
+function hideAuthModal() {
+  const modal = document.getElementById('authModal');
+  modal.style.display = 'none';
+  document.getElementById('authForm').reset();
+  document.getElementById('authMessage').innerHTML = '';
+}
+
+function showMessage(text, isError = false) {
+  const messageDiv = document.getElementById('authMessage');
+  messageDiv.className = isError ? 'message error' : 'message success';
+  messageDiv.textContent = text;
+}
+
+// ファイルアップロード処理
+async function handleFiles(files) {
+  if (files.length === 0) return;
+  
+  const uploadArea = document.getElementById('uploadArea');
+  uploadArea.classList.add('uploading');
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    try {
+      await addPhoto(file);
+    } catch (error) {
+      console.error(`${file.name}のアップロードエラー:`, error);
+    }
+  }
+  
+  uploadArea.classList.remove('uploading');
+  await refreshPhotos();
+}
+
+// イベントリスナー設定
+document.addEventListener('DOMContentLoaded', async () => {
+  // Firebase認証状態の変更を監視
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      // ログイン済み
+      currentUser = user;
+      isGuest = false;
+      if (db) db.close(); // 既存のDB接続を閉じる
+      db = await openDB(currentUser.uid); // Firebase UIDでDBを開く
+      console.log('ログインユーザー:', currentUser.email, 'UID:', currentUser.uid);
+    } else {
+      // ログアウト済みまたはゲスト
+      currentUser = null;
+      isGuest = true;
+      if (db) db.close(); // 既存のDB接続を閉じる
+      db = await openDB('guest'); // ゲスト用DBを開く
+      console.log('ゲストモード');
+    }
+    updateUI();
+    await refreshPhotos();
+  });
+  // Firebase認証状態の変更を監視
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      // ログイン済み
+      currentUser = user;
+      isGuest = false;
+      if (db) db.close(); // 既存のDB接続を閉じる
+      db = await openDB(currentUser.uid); // Firebase UIDでDBを開く
+      console.log('ログインユーザー:', currentUser.email, 'UID:', currentUser.uid);
+    } else {
+      // ログアウト済みまたはゲスト
+      currentUser = null;
+      isGuest = true;
+      if (db) db.close(); // 既存のDB接続を閉じる
+      db = await openDB('guest'); // ゲスト用DBを開く
+      console.log('ゲストモード');
+    }
+    updateUI();
+    await refreshPhotos(); // ユーザー切り替え時に写真を再読み込み
+  });
+  
+  // ユーザーボタンクリック
+  document.getElementById('userBtn').onclick = () => {
+    if (userManager.isLoggedIn()) {
+      if (confirm('ログアウトしますか？')) {
+        userManager.logout();
+      }
+    } else {
+      showAuthModal(false);
+    }
+    if (userManager.isLoggedIn()) {
+      if (confirm('ログアウトしますか？')) {
+        userManager.logout();
+      }
+    } else {
+      showAuthModal(false);
+    }
+  };
+  
+  // アップロードボタン
+  document.getElementById('uploadBtn').onclick = () => {
+    document.getElementById('fileInput').click();
+  };
+  
+  // アップロードエリア
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput = document.getElementById('fileInput');
+  
+  uploadArea.onclick = () => fileInput.click();
+  
+  fileInput.onchange = (e) => {
+    handleFiles(e.target.files);
+    e.target.value = '';
+  };
+  
+  // ドラッグ&ドロップ
+  uploadArea.ondragover = (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+  };
+  
+  uploadArea.ondragleave = () => {
+    uploadArea.classList.remove('dragover');
+  };
+  
+  uploadArea.ondrop = (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  };
+  
+  // 検索
+  document.getElementById('searchInput').oninput = filterPhotos;
+  
+  // フィルターチップ
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.onclick = () => {
+      currentFilter = chip.dataset.filter;
+      filterPhotos();
+    };
+  });
+  
+  // ビュー切り替え
+  document.getElementById('gridViewBtn').onclick = () => {
+    currentView = 'grid';
+    document.getElementById('gridViewBtn').classList.add('active');
+    document.getElementById('listViewBtn').classList.remove('active');
+    renderPhotos();
+  };
+  
+  document.getElementById('listViewBtn').onclick = () => {
+    currentView = 'list';
+    document.getElementById('listViewBtn').classList.add('active');
+    document.getElementById('gridViewBtn').classList.remove('active');
+    renderPhotos();
+  };
+  
+  // ソート
+  document.getElementById('sortSelect').onchange = filterPhotos;
+  
+  // 認証フォーム
+  let isRegisterMode = false;
+  
+  document.getElementById('authToggle').onclick = () => {
+    isRegisterMode = !isRegisterMode;
+    showAuthModal(isRegisterMode);
+  };
+  
+  document.getElementById('authCancel').onclick = hideAuthModal;
+  
+  document.getElementById('authForm').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    try {
+      if (isRegisterMode) {
+        if (password !== confirmPassword) {
+          throw new Error('パスワードが一致しません');
+        }
+        await userManager.register(email, password);
+        showMessage('アカウントが作成されました。自動的にログインします。', false);
+        // FirebaseのonAuthStateChangedがログイン状態を処理するため、ここでは特別な処理は不要
+        hideAuthModal();
+      } else {
+        await userManager.login(email, password);
+        showMessage('ログインしました。', false);
+        // FirebaseのonAuthStateChangedがログイン状態を処理するため、ここでは特別な処理は不要
+        hideAuthModal();
+      }
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  };
+  
+  // モーダルクローズ
+  document.getElementById('authModal').onclick = (e) => {
+    if (e.target === document.getElementById('authModal')) {
+      hideAuthModal();
+    }
+  };
+  
+  // キーボードショートカット
+  document.onkeydown = (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modal');
+      const authModal = document.getElementById('authModal');
+      if (modal.style.display === 'flex') {
+        modal.style.display = 'none';
+      } else if (authModal.style.display === 'flex') {
+        hideAuthModal();
+      }
+    }
+  };
+});
+
+</script>
+</body>
+</html>
